@@ -1,0 +1,126 @@
+﻿@page "/account/identity/login"
+
+
+@layout AuthenitcationLayout
+<EditForm Model="LoginModel" OnValidSubmit="LoginAsync">
+    <div class="card border-primary shadow-lg text-dark p-5" style="opacity:0.8; margin-top:30%; min-width:350px; border-radius:24px" >
+        <div class="card-header text-dark fs-4 border-primary">Login</div>
+        <div class="card-body" style="opacity:1">
+            <DataAnnotationsValidator />
+            <FloatingText class="form-control mb-3" Label="Email Address" Placeholder="JhonDoe@email.com" @bind-Value="LoginModel.EmailAddress" />
+            <FloatingText class="form-control" Label="User Password" Type="@PasswordType" @bind-Value="LoginModel.Password" />
+            <a class="btn btn-link text-decoration-none float-end" style="margin-top:28px" @onclick="ChangePasswordType"><small>@DisplayText</small></a>
+            <div class="form-group align-content-end">
+                <button class="float-end btn btn-success mt-4 w-50" type="submit" style="position:absolute; right:auto;margin:2px">Login</button>
+            </div>
+
+            <hr class="text-primary" />
+        </div>
+        <div class="card-footer mt-5">
+            <ValidationSummary class="form-control text-danger text-decoration-none p-4" style="list-style:lower-latin;text-align:left"/>
+        </div>
+    </div>
+</EditForm>
+
+<Modal @bind-Open="IsOpen" Actions="ButtonActions" BootstrapClass="@BorderClass" CustomStyle="min-width:250px; max-width=300px;">
+    <ContentContent>
+        <span class="text-center text-muted">
+            <div class="card border-@BorderClass">
+                <div class="card-header">Information</div>
+                <div class="card-body text-muted">@Message</div>
+            </div>
+        </span>
+    </ContentContent>
+
+    <ButtonTemplate>
+        <div class="d-flex justify-content-center align-content-center">
+            <button class="@ButtonClass btn-sm" value="Ok" style="margin-right:5px;">Okay</button>
+        </div>
+    </ButtonTemplate>
+</Modal>
+@code {
+    public bool IsOpen { get; set; }
+    public string? SelectedAction{ get; set; }
+    string? Message;
+    string? BorderClass = "border-success rounded p-2 ml-2 mr-2";
+    string? ButtonClass = "btn btn-success";
+    public LoginDTO LoginModel { get; set; } = new();
+    private async Task LoginAsync()
+    {
+        try
+        {
+            ResetButtons();
+            var response = await accountService.LoginAccountAsync(LoginModel);
+            if(response.Flag)
+            {
+                var customAuthStateProvider = (CustomAuthenticationStateProvider)AuthStateProvider;
+                await customAuthStateProvider.UpdateAuthenticationState(new LocalStorageDTO()
+                    { Token = response.Token, Refresh = response.RefreshToken });
+
+                NavManager.NavigateTo("/content/home", true);
+            }
+            else
+            {
+                DangerBorderAndButton();
+                Message = response.Message;
+                IsOpen = true;
+            }
+        }
+        catch
+        {
+            DangerBorderAndButton();
+            Message = "Sorry, unknown error occured";
+            IsOpen = true;
+        }
+    }
+    private string? PasswordType = "password";
+    private bool PasswordState = true;
+    private string DisplayText = "Show";
+    void ChangePasswordType()
+    {
+        PasswordState = !PasswordState;
+        if(!PasswordState)
+        {
+            PasswordType = "text";
+            DisplayText = "Hide";
+        }
+        else
+        {
+            PasswordType = "password";
+            DisplayText = "Show";
+
+        }
+    }
+
+    [CascadingParameter]
+    public Task<AuthenticationState>? ClientAuthState { get; set; }
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if ((await ClientAuthState!).User.Identity!.IsAuthenticated == true)
+                NavManager.NavigateTo("content/home", false, true);
+
+        }
+        catch{}
+    }
+
+    void DangerBorderAndButton()
+    {
+        BorderClass = "border-danger rounded p-2 ml-2 mr-2";
+        ButtonClass = "btn btn-danger";
+    }
+
+    void ResetButtons()
+    {
+        BorderClass = "border-success rounded p-2 ml-2 mr-2";
+        ButtonClass = "btn btn-success";
+    }
+
+    void ButtonActions(string action)
+    {
+        SelectedAction = action;
+        if (action == "ok")
+            IsOpen = false;
+    }
+}

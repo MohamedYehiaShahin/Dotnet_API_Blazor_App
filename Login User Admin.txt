@@ -1,0 +1,5 @@
+"emailAddress": "ms42119134@gmail.com",
+  "password": "Sha^96_HM",
+  "name": "Mohamed Yahia",
+  "confirmPassword": "Sha^96_HM",
+  "role": "admin"
